@@ -2,106 +2,191 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>PAM System</title>
+    <title>PrivGuard — Защита привилегированного доступа</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <style>
+        .step { display: none; }
+        .step.active { display: block; }
+    </style>
 </head>
 <body class="bg-light">
-    <div class="container mt-5">
-        <h1 class="mb-4">название потом придумаю</h1>
+    <div class="container mt-5" style="max-width: 600px;">
+        <h2 class="text-center mb-4">PrivGuard</h2>
+        <p class="text-center text-muted mb-4">Подсистема защиты привилегированного доступа</p>
 
-        <ul class="nav nav-tabs" id="mainTabs">
-            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#auth">Аутентификация</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#privileges">Привилегии</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#audit">Аудит</a></li>
-            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#totp">Настройка TOTP</a></li>
-        </ul>
+        <!-- Шаг 1: Экран входа -->
+        <div id="step-login" class="step active">
+            <div class="card"><div class="card-body">
+                <h4 class="card-title">Вход в систему</h4>
+                <input id="login_user" class="form-control mb-2" placeholder="Логин">
+                <input id="login_pass" type="password" class="form-control mb-2" placeholder="Пароль">
+                <div id="totp_block" style="display:none;">
+                    <input id="totp_code" class="form-control mb-2" placeholder="TOTP-код">
+                </div>
+                <button class="btn btn-success w-100 mb-2" onclick="login()">Войти</button>
+                <button class="btn btn-outline-secondary w-100 mb-2" onclick="showStep('step-setup-totp')">Настроить TOTP</button>
+                <hr>
+                <p class="text-center text-muted">Нет учётной записи?</p>
+                <button class="btn btn-outline-primary w-100" onclick="showStep('step-register')">Зарегистрироваться</button>
+                <div id="login_result" class="mt-2"></div>
+            </div></div>
+        </div>
 
-        <div class="tab-content mt-3">
-            <!-- Вкладка аутентификации -->
-            <div class="tab-pane fade show active" id="auth">
-                <div class="card"><div class="card-body">
-                    <h5>Регистрация</h5>
-                    <input id="reg_user" class="form-control mb-2" placeholder="Логин">
-                    <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Пароль">
-                    <button class="btn btn-primary" onclick="register()">Зарегистрироваться</button>
+        <!-- Шаг 2: Регистрация -->
+        <div id="step-register" class="step">
+            <div class="card"><div class="card-body">
+                <h4 class="card-title">Регистрация</h4>
+                <input id="reg_user" class="form-control mb-2" placeholder="Придумайте логин">
+                <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Придумайте пароль">
+                <button class="btn btn-primary w-100 mb-2" onclick="register()">Зарегистрироваться</button>
+                <button class="btn btn-outline-secondary w-100" onclick="showStep('step-login')">← Вернуться ко входу</button>
+                <div id="reg_result" class="mt-2"></div>
+            </div></div>
+        </div>
 
-                    <hr>
+        <!-- Шаг 3: Настройка TOTP -->
+        <div id="step-setup-totp" class="step">
+            <div class="card"><div class="card-body">
+                <h4 class="card-title">Настройка двухфакторной аутентификации</h4>
+                <p class="text-muted">Введите логин, для которого настраивается второй фактор.</p>
+                <input id="totp_username" class="form-control mb-2" placeholder="Логин">
+                <button class="btn btn-primary w-100 mb-2" onclick="setupTOTP()">Сгенерировать ключ</button>
+                <div id="totp_setup_result" class="mt-2"></div>
+                <button class="btn btn-outline-secondary w-100 mt-2" onclick="showStep('step-login')">← Вернуться ко входу</button>
+            </div></div>
+        </div>
 
-                    <h5>Вход</h5>
-                    <input id="login_user" class="form-control mb-2" placeholder="Логин">
-                    <input id="login_pass" type="password" class="form-control mb-2" placeholder="Пароль">
-                    <input id="totp_code" class="form-control mb-2" placeholder="TOTP-код (если настроен)">
-                    <button class="btn btn-success" onclick="login()">Войти</button>
-                    <div id="login_result" class="mt-2"></div>
-                </div></div>
-            </div>
+        <!-- Шаг 4: Главное меню (после входа) -->
+        <div id="step-menu" class="step">
+            <div class="card mb-3"><div class="card-body">
+                <h4>Главное меню</h4>
+                <p>Вы вошли как: <b id="menu_username"></b></p>
+                <p>Токен: <code id="menu_token"></code></p>
+            </div></div>
 
-            <!-- Вкладка привилегий -->
-            <div class="tab-pane fade" id="privileges">
-                <div class="card"><div class="card-body">
-                    <h5>Запрос временных привилегий</h5>
-                    <input id="token" class="form-control mb-2" placeholder="Токен сессии">
-                    <input id="target" class="form-control mb-2" placeholder="Целевая система">
-                    <select id="role_select" class="form-control mb-2">
-                        <option value="admin">Администратор</option>
-                        <option value="db_admin">Администратор БД</option>
-                    </select>
-                    <textarea id="justification" class="form-control mb-2" placeholder="Обоснование"></textarea>
-                    <input id="duration" type="number" class="form-control mb-2" placeholder="Длительность (мин)" value="30">
-                    <button class="btn btn-warning" onclick="requestPrivilege()">Запросить</button>
-                    <div id="priv_result" class="mt-2"></div>
-                </div></div>
-            </div>
+            <div class="card mb-3"><div class="card-body">
+                <h5>Запрос временных привилегий</h5>
+                <input id="target" class="form-control mb-2" placeholder="Целевая система">
+                <select id="role_select" class="form-control mb-2">
+                    <option value="admin">Администратор</option>
+                    <option value="db_admin">Администратор БД</option>
+                </select>
+                <textarea id="justification" class="form-control mb-2" placeholder="Обоснование"></textarea>
+                <input id="duration" type="number" class="form-control mb-2" placeholder="Длительность (мин)" value="30">
+                <button class="btn btn-warning w-100 mb-2" onclick="requestPrivilege()">Запросить привилегии</button>
+                <div id="priv_result" class="mt-2"></div>
+            </div></div>
 
-            <!-- Вкладка аудита -->
-            <div class="tab-pane fade" id="audit">
-                <div class="card"><div class="card-body">
-                    <h5>Журнал событий</h5>
-                    <button class="btn btn-info mb-2" onclick="loadAudit()">Обновить</button>
-                    <div id="audit_result"></div>
-                </div></div>
-            </div>
-                  <!-- Вкладка настройки TOTP -->
-            <div class="tab-pane fade" id="totp">
-                <div class="card"><div class="card-body">
-                    <h5>Настройка двухфакторной аутентификации</h5>
-                    <input id="totp_username" class="form-control mb-2" placeholder="Логин">
-                    <button class="btn btn-primary" onclick="setupTOTP()">Сгенерировать секрет</button>
-                    <div id="totp_result" class="mt-2"></div>
-                </div></div>
-            </div>
+            <div class="card mb-3"><div class="card-body">
+                <h5>Выполнение команд</h5>
+                <input id="command_input" class="form-control mb-2" placeholder="Введите команду">
+                <button class="btn btn-info w-100 mb-2" onclick="executeCommand()">Выполнить</button>
+                <div id="command_result" class="mt-2"></div>
+            </div></div>
+
+            <div class="card mb-3"><div class="card-body">
+                <h5>Журнал аудита</h5>
+                <button class="btn btn-info w-100 mb-2" onclick="loadAudit()">Обновить</button>
+                <div id="audit_result"></div>
+            </div></div>
+
+            <div class="card mb-3"><div class="card-body">
+                <h5>Управление политиками</h5>
+                <input id="pol_user_role" class="form-control mb-2" placeholder="Роль пользователя">
+                <input id="pol_target_role" class="form-control mb-2" placeholder="Запрашиваемая роль">
+                <input id="pol_max_dur" type="number" class="form-control mb-2" placeholder="Макс. длительность (мин)" value="60">
+                <div class="form-check mb-2">
+                    <input id="pol_mfa" type="checkbox" class="form-check-input" checked>
+                    <label class="form-check-label">Требовать MFA</label>
+                </div>
+                <button class="btn btn-primary w-100 mb-2" onclick="createPolicy()">Создать политику</button>
+                <button class="btn btn-info w-100 mb-2" onclick="loadPolicies()">Обновить список</button>
+                <div id="policies_result"></div>
+            </div></div>
+
+            <button class="btn btn-outline-danger w-100" onclick="logout()">Выйти</button>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        let currentToken = '';
+
+        function showStep(id) {
+            document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+        }
+
         async function register() {
             const u = document.getElementById('reg_user').value;
             const p = document.getElementById('reg_pass').value;
+            if (!u || !p) { alert('Заполните все поля'); return; }
             const r = await fetch('/api/register?' + new URLSearchParams({username: u, password: p}), {method: 'POST'});
-            alert((await r.json()).message || 'Ошибка');
+            const d = await r.json();
+            if (d.message) {
+                document.getElementById('reg_result').innerHTML = '<div class="alert alert-success">' + d.message + '</div>';
+                setTimeout(() => showStep('step-login'), 1500);
+            } else {
+                document.getElementById('reg_result').innerHTML = '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
+            }
         }
 
         async function login() {
             const u = document.getElementById('login_user').value;
             const p = document.getElementById('login_pass').value;
             const t = document.getElementById('totp_code').value;
+            if (!u || !p) { alert('Заполните логин и пароль'); return; }
             const params = new URLSearchParams({username: u, password: p});
             if (t) params.append('totp_code', t);
             const r = await fetch('/api/login?' + params, {method: 'POST'});
             const d = await r.json();
-            if (d.token) {
-                document.getElementById('token').value = d.token;
-                document.getElementById('login_result').innerHTML = '<div class="alert alert-success">Вход выполнен. Токен: ' + d.token + '</div>';
+            if (d.require_totp) {
+                document.getElementById('totp_block').style.display = 'block';
+                document.getElementById('login_result').innerHTML = '<div class="alert alert-warning">Введите TOTP-код из приложения</div>';
+            } else if (d.token) {
+                currentToken = d.token;
+                document.getElementById('menu_token').textContent = d.token;
+                document.getElementById('menu_username').textContent = u;
+                document.getElementById('totp_block').style.display = 'none';
+                document.getElementById('login_result').innerHTML = '';
+                showStep('step-menu');
             } else {
-                document.getElementById('login_result').innerHTML = '<div class="alert alert-danger">Ошибка входа</div>';
+                document.getElementById('login_result').innerHTML = '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
             }
+        }
+
+        async function setupTOTP() {
+            const u = document.getElementById('totp_username').value;
+            if (!u) { alert('Введите логин'); return; }
+            const r = await fetch('/api/setup_totp?' + new URLSearchParams({username: u}), {method: 'POST'});
+            const d = await r.json();
+            if (d.secret) {
+                document.getElementById('totp_setup_result').innerHTML =
+                    '<div class="alert alert-success">' +
+                    '<p><b>Ключ:</b> ' + d.secret + '</p>' +
+                    '<div id="qrcode"></div>' +
+                    '<p class="mt-2">Отсканируйте код в приложении-аутентификаторе.</p>' +
+                    '</div>';
+                new QRCode(document.getElementById("qrcode"), {text: d.uri, width: 180, height: 180});
+            } else {
+                document.getElementById('totp_setup_result').innerHTML =
+                    '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
+            }
+        }
+
+        function logout() {
+            currentToken = '';
+            document.getElementById('login_user').value = '';
+            document.getElementById('login_pass').value = '';
+            document.getElementById('totp_code').value = '';
+            document.getElementById('totp_block').style.display = 'none';
+            showStep('step-login');
         }
 
         async function requestPrivilege() {
             const params = new URLSearchParams({
-                token: document.getElementById('token').value,
+                token: currentToken,
                 target_system: document.getElementById('target').value,
                 requested_role: document.getElementById('role_select').value,
                 justification: document.getElementById('justification').value,
@@ -112,43 +197,51 @@
             document.getElementById('priv_result').innerHTML = '<div class="alert alert-info">' + (d.message || d.detail) + '</div>';
         }
 
+        async function executeCommand() {
+            const cmd = document.getElementById('command_input').value;
+            if (!cmd) { alert('Введите команду'); return; }
+            const r = await fetch('/api/execute_command?' + new URLSearchParams({token: currentToken, command: cmd}), {method: 'POST'});
+            const d = await r.json();
+            if (d.status === 'executed') {
+                document.getElementById('command_result').innerHTML = '<div class="alert alert-success">' + d.message + '</div>';
+            } else if (d.status === 'blocked') {
+                document.getElementById('command_result').innerHTML = '<div class="alert alert-danger">' + d.reason + '</div>';
+            } else {
+                document.getElementById('command_result').innerHTML = '<div class="alert alert-warning">' + (d.detail || 'Ошибка') + '</div>';
+            }
+        }
+
         async function loadAudit() {
-            const t = document.getElementById('token').value;
-            const r = await fetch('/api/audit_log?token=' + t);
+            const r = await fetch('/api/audit_log?token=' + currentToken);
             const logs = await r.json();
             let html = '<table class="table table-sm"><tr><th>Тип</th><th>Описание</th><th>Время</th></tr>';
             logs.forEach(l => html += `<tr><td>${l.event_type}</td><td>${l.description}</td><td>${l.timestamp}</td></tr>`);
             html += '</table>';
             document.getElementById('audit_result').innerHTML = html;
         }
-               async function setupTOTP() {
-    const u = document.getElementById('totp_username').value;
-    if (!u) {
-        alert('Введите логин');
-        return;
-    }
-    const r = await fetch('/api/setup_totp?' + new URLSearchParams({username: u}), {method: 'POST'});
-    const d = await r.json();
-    if (d.secret) {
-        document.getElementById('totp_result').innerHTML =
-            '<div class="alert alert-success">' +
-            '<p><b>Секретный ключ:</b> ' + d.secret + '</p>' +
-            '<p><b>URI:</b> ' + d.uri + '</p>' +
-            '<div id="qrcode"></div>' +
-            '<p>Отсканируйте QR-код в приложении-аутентификаторе.</p>' +
-            '</div>';
-        // Генерируем QR-код
-        new QRCode(document.getElementById("qrcode"), {
-            text: d.uri,
-            width: 200,
-            height: 200
-        });
-    } else {
-        document.getElementById('totp_result').innerHTML =
-            '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
-    }
-}
 
+        async function createPolicy() {
+            const params = new URLSearchParams({
+                token: currentToken,
+                user_role: document.getElementById('pol_user_role').value,
+                target_role: document.getElementById('pol_target_role').value,
+                max_duration: document.getElementById('pol_max_dur').value,
+                require_mfa: document.getElementById('pol_mfa').checked
+            });
+            const r = await fetch('/api/policies?' + params, {method: 'POST'});
+            const d = await r.json();
+            alert(d.message || d.detail);
+            loadPolicies();
+        }
+
+        async function loadPolicies() {
+            const r = await fetch('/api/policies?token=' + currentToken);
+            const policies = await r.json();
+            let html = '<table class="table table-sm"><tr><th>ID</th><th>Роль польз.</th><th>Целевая роль</th><th>Длит.</th><th>MFA</th></tr>';
+            policies.forEach(p => html += `<tr><td>${p.id}</td><td>${p.user_role}</td><td>${p.target_role}</td><td>${p.max_duration} мин</td><td>${p.require_mfa?'Да':'Нет'}</td></tr>`);
+            html += '</table>';
+            document.getElementById('policies_result').innerHTML = html;
+        }
     </script>
 </body>
 </html>
