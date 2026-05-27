@@ -71,8 +71,21 @@ async def register(
         password: str,
         db: Session = Depends(get_db)
 ):
+    # Проверка логина
+    if len(username) < 3:
+        raise HTTPException(status_code=400, detail="Логин должен быть не менее 3 символов")
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Пользователь уже существует")
+
+    # Проверка пароля
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="Пароль должен быть не менее 8 символов")
+    if not any(c.isupper() for c in password):
+        raise HTTPException(status_code=400, detail="Пароль должен содержать хотя бы одну заглавную букву")
+    if not any(c.islower() for c in password):
+        raise HTTPException(status_code=400, detail="Пароль должен содержать хотя бы одну строчную букву")
+    if not any(c.isdigit() for c in password):
+        raise HTTPException(status_code=400, detail="Пароль должен содержать хотя бы одну цифру")
 
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
     user = User(username=username, password_hash=hashed.decode())
@@ -149,6 +162,46 @@ def revoke_privilege_by_id(privilege_id: int, db: Session):
         db.add(log)
         db.commit()
         print(f"[INFO] Привилегия {privilege_id} автоматически отозвана")
+
+
+@app.post("/api/revoke_privilege")
+async def revoke_privilege(token: str, db: Session = Depends(get_db)):
+    if token not in sessions:
+        raise HTTPException(status_code=401, detail="Не авторизован")
+
+    session_data = sessions[token]
+    user_id = session_data["user_id"]
+
+    active = db.query(ActivePrivilege).filter(
+        ActivePrivilege.user_id == user_id,
+        ActivePrivilege.is_active == True
+    ).first()
+
+    if not active:
+        raise HTTPException(status_code=404, detail="Нет активных привилегий")
+
+    active.is_active = False
+
+    # Обновляем статус заявки
+    req = db.query(PrivilegeRequest).filter(
+        PrivilegeRequest.id == active.request_id
+    ).first()
+    if req:
+        req.status = "revoked"
+        req.revoked_at = datetime.now().isoformat()
+
+    # Запись в аудит
+    log = AuditLog(
+        user_id=user_id,
+        event_type="privilege_revoked",
+        description=f"Привилегия {active.role} отозвана пользователем досрочно",
+        ip_address="127.0.0.1",
+        timestamp=datetime.now().isoformat()
+    )
+    db.add(log)
+    db.commit()
+
+    return {"message": "Привилегии отозваны"}
 @app.post("/api/request_privilege")
 async def request_privilege(
         token: str,
@@ -235,3 +288,62 @@ async def get_audit_log(token: str, db: Session = Depends(get_db)):
         }
         for l in logs
     ]
+
+
+# ==================== УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ ====================
+
+@app.get("/api/users")
+async def get_users(token: str, db: Session = Depends(get_db)):
+    if token not in sessions:
+        raise HTTPException(status_code=401, detail="Не авторизован")
+
+    session_data = sessions[token]
+    user = db.query(User).filter(User.id == session_data["user_id"]).first()
+
+    if user.role != "security_admin":
+        raise HTTPException(status_code=403, detail="Недостаточно прав")
+
+    users = db.query(User).all()
+    return [
+        {
+            "id": u.id,
+            "username": u.username,
+            "role": u.role,
+            "totp_enabled": u.totp_enabled,
+            "is_blocked": u.is_blocked,
+            "failed_attempts": u.failed_attempts
+        }
+        for u in users
+    ]
+
+
+# ==================== ДАШБОРД ====================
+
+@app.get("/api/dashboard")
+async def get_dashboard(token: str, db: Session = Depends(get_db)):
+    if token not in sessions:
+        raise HTTPException(status_code=401, detail="Не авторизован")
+
+    today = datetime.now().isoformat()[:10]
+
+    total_users = db.query(User).count()
+    active_privileges = db.query(ActivePrivilege).filter(
+        ActivePrivilege.is_active == True
+    ).count()
+    today_events = db.query(AuditLog).filter(
+        AuditLog.timestamp.like(f"{today}%")
+    ).count()
+    blocked_commands = db.query(AuditLog).filter(
+        AuditLog.event_type == "command_blocked"
+    ).count()
+    total_logins = db.query(AuditLog).filter(
+        AuditLog.event_type == "auth_success"
+    ).count()
+
+    return {
+        "total_users": total_users,
+        "active_privileges": active_privileges,
+        "today_events": today_events,
+        "blocked_commands": blocked_commands,
+        "total_logins": total_logins
+    }

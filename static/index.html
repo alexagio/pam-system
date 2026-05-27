@@ -16,34 +16,33 @@
         <p class="text-center text-muted mb-4">Подсистема защиты привилегированного доступа</p>
 
         <!-- Шаг 1: Экран входа -->
-        <div id="step-login" class="step active">
-            <div class="card"><div class="card-body">
-                <h4 class="card-title">Вход в систему</h4>
-                <input id="login_user" class="form-control mb-2" placeholder="Логин">
-                <input id="login_pass" type="password" class="form-control mb-2" placeholder="Пароль">
-                <div id="totp_block" style="display:none;">
-                    <input id="totp_code" class="form-control mb-2" placeholder="TOTP-код">
-                </div>
-                <button class="btn btn-success w-100 mb-2" onclick="login()">Войти</button>
-                <button class="btn btn-outline-secondary w-100 mb-2" onclick="showStep('step-setup-totp')">Настроить TOTP</button>
-                <hr>
-                <p class="text-center text-muted">Нет учётной записи?</p>
-                <button class="btn btn-outline-primary w-100" onclick="showStep('step-register')">Зарегистрироваться</button>
-                <div id="login_result" class="mt-2"></div>
-            </div></div>
-        </div>
+<div id="step-login" class="step active">
+    <div class="card"><div class="card-body">
+        <h4 class="card-title">Вход в систему</h4>
+        <input id="login_user" class="form-control mb-2" placeholder="Логин">
+        <input id="login_pass" type="password" class="form-control mb-2" placeholder="Пароль">
+        <input id="totp_code" class="form-control mb-2" placeholder="TOTP-код">
+        <button class="btn btn-success w-100 mb-2" onclick="login()">Войти</button>
+        <button class="btn btn-outline-secondary w-100 mb-2" onclick="showStep('step-setup-totp')">Настроить TOTP</button>
+        <hr>
+        <p class="text-center text-muted">Нет учётной записи?</p>
+        <button class="btn btn-outline-primary w-100" onclick="showStep('step-register')">Зарегистрироваться</button>
+        <div id="login_result" class="mt-2"></div>
+    </div></div>
+</div>
 
-        <!-- Шаг 2: Регистрация -->
-        <div id="step-register" class="step">
-            <div class="card"><div class="card-body">
-                <h4 class="card-title">Регистрация</h4>
-                <input id="reg_user" class="form-control mb-2" placeholder="Придумайте логин">
-                <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Придумайте пароль">
-                <button class="btn btn-primary w-100 mb-2" onclick="register()">Зарегистрироваться</button>
-                <button class="btn btn-outline-secondary w-100" onclick="showStep('step-login')">← Вернуться ко входу</button>
-                <div id="reg_result" class="mt-2"></div>
-            </div></div>
-        </div>
+<!-- Шаг 2: Регистрация -->
+<div id="step-register" class="step">
+    <div class="card"><div class="card-body">
+        <h4 class="card-title">Регистрация</h4>
+        <input id="reg_user" class="form-control mb-2" placeholder="Придумайте логин (от 3 символов)">
+        <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Придумайте пароль">
+        <small class="text-muted">Не менее 8 символов, заглавная и строчная буква, цифра</small>
+        <button class="btn btn-primary w-100 mt-2 mb-2" onclick="register()">Зарегистрироваться</button>
+        <button class="btn btn-outline-secondary w-100" onclick="showStep('step-login')">← Вернуться ко входу</button>
+        <div id="reg_result" class="mt-2"></div>
+    </div></div>
+</div>
 
         <!-- Шаг 3: Настройка TOTP -->
         <div id="step-setup-totp" class="step">
@@ -57,60 +56,120 @@
             </div></div>
         </div>
 
-        <!-- Шаг 4: Главное меню (после входа) -->
-        <div id="step-menu" class="step">
-            <div class="card mb-3"><div class="card-body">
-                <h4>Главное меню</h4>
-                <p>Вы вошли как: <b id="menu_username"></b></p>
-                <p>Токен: <code id="menu_token"></code></p>
+       <!-- Шаг 4: Главное меню (после входа) -->
+<div id="step-menu" class="step">
+    <div class="card mb-3"><div class="card-body">
+        <h4>Главное меню</h4>
+        <p>Вы вошли как: <b id="menu_username"></b> (<span id="menu_role"></span>)</p>
+        <p>Токен: <code id="menu_token"></code></p>
+            <!-- Дашборд -->
+    <div class="row mb-3" id="dashboard" style="display:none;">
+        <div class="col-6 mb-2">
+            <div class="card bg-primary text-white"><div class="card-body text-center">
+                <h3 id="dash_users">0</h3>
+                <small>Пользователей</small>
             </div></div>
-
-            <div class="card mb-3"><div class="card-body">
-                <h5>Запрос временных привилегий</h5>
-                <input id="target" class="form-control mb-2" placeholder="Целевая система">
-                <select id="role_select" class="form-control mb-2">
-                    <option value="admin">Администратор</option>
-                    <option value="db_admin">Администратор БД</option>
-                </select>
-                <textarea id="justification" class="form-control mb-2" placeholder="Обоснование"></textarea>
-                <input id="duration" type="number" class="form-control mb-2" placeholder="Длительность (мин)" value="30">
-                <button class="btn btn-warning w-100 mb-2" onclick="requestPrivilege()">Запросить привилегии</button>
-                <div id="priv_result" class="mt-2"></div>
+        </div>
+        <div class="col-6 mb-2">
+            <div class="card bg-warning text-white"><div class="card-body text-center">
+                <h3 id="dash_active">0</h3>
+                <small>Активных привилегий</small>
             </div></div>
-
-            <div class="card mb-3"><div class="card-body">
-                <h5>Выполнение команд</h5>
-                <input id="command_input" class="form-control mb-2" placeholder="Введите команду">
-                <button class="btn btn-info w-100 mb-2" onclick="executeCommand()">Выполнить</button>
-                <div id="command_result" class="mt-2"></div>
+        </div>
+        <div class="col-6 mb-2">
+            <div class="card bg-success text-white"><div class="card-body text-center">
+                <h3 id="dash_today">0</h3>
+                <small>Событий сегодня</small>
             </div></div>
-
-            <div class="card mb-3"><div class="card-body">
-                <h5>Журнал аудита</h5>
-                <button class="btn btn-info w-100 mb-2" onclick="loadAudit()">Обновить</button>
-                <div id="audit_result"></div>
+        </div>
+        <div class="col-6 mb-2">
+            <div class="card bg-danger text-white"><div class="card-body text-center">
+                <h3 id="dash_blocked">0</h3>
+                <small>Заблокировано команд</small>
             </div></div>
-
-            <div class="card mb-3"><div class="card-body">
-                <h5>Управление политиками</h5>
-                <input id="pol_user_role" class="form-control mb-2" placeholder="Роль пользователя">
-                <input id="pol_target_role" class="form-control mb-2" placeholder="Запрашиваемая роль">
-                <input id="pol_max_dur" type="number" class="form-control mb-2" placeholder="Макс. длительность (мин)" value="60">
-                <div class="form-check mb-2">
-                    <input id="pol_mfa" type="checkbox" class="form-check-input" checked>
-                    <label class="form-check-label">Требовать MFA</label>
-                </div>
-                <button class="btn btn-primary w-100 mb-2" onclick="createPolicy()">Создать политику</button>
-                <button class="btn btn-info w-100 mb-2" onclick="loadPolicies()">Обновить список</button>
-                <div id="policies_result"></div>
-            </div></div>
-
-            <button class="btn btn-outline-danger w-100" onclick="logout()">Выйти</button>
         </div>
     </div>
+    </div></div>
+
+    <!-- Привилегии (доступно всем) -->
+    <div class="card mb-3"><div class="card-body">
+        <h5>Запрос временных привилегий</h5>
+        <input id="target" class="form-control mb-2" placeholder="Целевая система">
+        <select id="role_select" class="form-control mb-2">
+            <option value="admin">Администратор</option>
+            <option value="db_admin">Администратор БД</option>
+        </select>
+        <textarea id="justification" class="form-control mb-2" placeholder="Обоснование"></textarea>
+        <input id="duration" type="number" class="form-control mb-2" placeholder="Длительность (мин)" value="30">
+        <button class="btn btn-warning w-100 mb-2" onclick="requestPrivilege()">Запросить привилегии</button>
+        <button class="btn btn-danger w-100 mb-2" onclick="revokePrivilege()">Завершить привилегии досрочно</button>
+        <div id="priv_result" class="mt-2"></div>
+    </div></div>
+
+    <!-- Команды (доступно всем) -->
+    <div class="card mb-3"><div class="card-body">
+        <h5>Выполнение команд</h5>
+        <input id="command_input" class="form-control mb-2" placeholder="Введите команду">
+        <button class="btn btn-info w-100 mb-2" onclick="executeCommand()">Выполнить</button>
+        <div id="command_result" class="mt-2"></div>
+    </div></div>
+
+    <!-- Аудит (доступно всем) -->
+    <div class="card mb-3"><div class="card-body">
+        <h5>Журнал аудита</h5>
+        <button class="btn btn-info w-100 mb-2" onclick="loadAudit()">Обновить</button>
+        <div id="audit_result"></div>
+    </div></div>
+
+    <!-- Политики (только для security_admin) -->
+    <div id="admin_policies" style="display:none;">
+        <div class="card mb-3"><div class="card-body">
+            <h5>Управление политиками</h5>
+            <input id="pol_user_role" class="form-control mb-2" placeholder="Роль пользователя (user/admin)">
+            <input id="pol_target_role" class="form-control mb-2" placeholder="Запрашиваемая роль (admin/db_admin)">
+            <input id="pol_max_dur" type="number" class="form-control mb-2" placeholder="Макс. длительность (мин)" value="60">
+            <div class="form-check mb-2">
+                <input id="pol_mfa" type="checkbox" class="form-check-input" checked>
+                <label class="form-check-label">Требовать MFA</label>
+            </div>
+            <button class="btn btn-primary w-100 mb-2" onclick="createPolicy()">Создать политику</button>
+            <button class="btn btn-info w-100 mb-2" onclick="loadPolicies()">Обновить список</button>
+            <div id="policies_result"></div>
+        </div></div>
+    </div>
+
+    <!-- Пользователи (только для security_admin) -->
+    <div id="admin_users" style="display:none;">
+        <div class="card mb-3"><div class="card-body">
+            <h5>Управление пользователями</h5>
+            <button class="btn btn-info w-100 mb-2" onclick="loadUsers()">Обновить список</button>
+            <div id="users_result"></div>
+        </div></div>
+    </div>
+
+    <button class="btn btn-outline-danger w-100" onclick="logout()">Выйти</button>
+</div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Автовход при обновлении страницы
+window.addEventListener('load', function() {
+    const savedToken = localStorage.getItem('pam_token');
+    if (savedToken) {
+        currentToken = savedToken;
+        document.getElementById('menu_token').textContent = savedToken;
+        document.getElementById('menu_username').textContent = localStorage.getItem('pam_username');
+        document.getElementById('menu_role').textContent = localStorage.getItem('pam_role') || 'user';
+
+        if (localStorage.getItem('pam_role') === 'security_admin') {
+            document.getElementById('admin_policies').style.display = 'block';
+            document.getElementById('admin_users').style.display = 'block';
+        }
+        document.getElementById('dashboard').style.display = 'block';
+        showStep('step-menu');
+        loadDashboard();
+    }
+});
         let currentToken = '';
 
         function showStep(id) {
@@ -133,29 +192,48 @@
         }
 
         async function login() {
-            const u = document.getElementById('login_user').value;
-            const p = document.getElementById('login_pass').value;
-            const t = document.getElementById('totp_code').value;
-            if (!u || !p) { alert('Заполните логин и пароль'); return; }
-            const params = new URLSearchParams({username: u, password: p});
-            if (t) params.append('totp_code', t);
-            const r = await fetch('/api/login?' + params, {method: 'POST'});
-            const d = await r.json();
-            if (d.require_totp) {
-                document.getElementById('totp_block').style.display = 'block';
-                document.getElementById('login_result').innerHTML = '<div class="alert alert-warning">Введите TOTP-код из приложения</div>';
-            } else if (d.token) {
-                currentToken = d.token;
-                document.getElementById('menu_token').textContent = d.token;
-                document.getElementById('menu_username').textContent = u;
-                document.getElementById('totp_block').style.display = 'none';
-                document.getElementById('login_result').innerHTML = '';
-                showStep('step-menu');
-            } else {
-                document.getElementById('login_result').innerHTML = '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
-            }
+    const u = document.getElementById('login_user').value;
+    const p = document.getElementById('login_pass').value;
+    const t = document.getElementById('totp_code').value;
+    if (!u || !p) { alert('Заполните логин и пароль'); return; }
+    const params = new URLSearchParams({username: u, password: p});
+    if (t) params.append('totp_code', t);
+    const r = await fetch('/api/login?' + params, {method: 'POST'});
+    const d = await r.json();
+    if (d.require_totp) {
+        document.getElementById('login_result').innerHTML =
+            '<div class="alert alert-warning">У вас настроен TOTP. Введите код из приложения-аутентификатора.</div>';
+    } else if (d.token) {
+        currentToken = d.token;
+                localStorage.setItem('pam_token', d.token);
+        localStorage.setItem('pam_username', u);
+        localStorage.setItem('pam_role', d.role || 'user');
+        document.getElementById('menu_token').textContent = d.token;
+        document.getElementById('menu_username').textContent = u;
+        document.getElementById('menu_role').textContent = d.role || 'user';
+        document.getElementById('login_result').innerHTML = '';
+
+        // Показываем админские блоки только для security_admin
+        if (d.role === 'security_admin') {
+            document.getElementById('admin_policies').style.display = 'block';
+            document.getElementById('admin_users').style.display = 'block';
+        } else {
+            document.getElementById('admin_policies').style.display = 'none';
+            document.getElementById('admin_users').style.display = 'none';
         }
 
+        showStep('step-menu');
+                document.getElementById('dashboard').style.display = 'block';
+        loadDashboard();
+                loadDashboard();
+                        // Автообновление дашборда каждые 10 секунд
+        if (window.dashboardInterval) clearInterval(window.dashboardInterval);
+        window.dashboardInterval = setInterval(loadDashboard, 10000);
+    } else {
+        document.getElementById('login_result').innerHTML =
+            '<div class="alert alert-danger">' + (d.detail || 'Ошибка входа') + '</div>';
+    }
+}
         async function setupTOTP() {
             const u = document.getElementById('totp_username').value;
             if (!u) { alert('Введите логин'); return; }
@@ -176,12 +254,16 @@
         }
 
         function logout() {
+            if (window.dashboardInterval) clearInterval(window.dashboardInterval);
             currentToken = '';
             document.getElementById('login_user').value = '';
             document.getElementById('login_pass').value = '';
             document.getElementById('totp_code').value = '';
             document.getElementById('totp_block').style.display = 'none';
             showStep('step-login');
+                localStorage.removeItem('pam_token');
+    localStorage.removeItem('pam_username');
+    localStorage.removeItem('pam_role');
         }
 
         async function requestPrivilege() {
@@ -242,6 +324,40 @@
             html += '</table>';
             document.getElementById('policies_result').innerHTML = html;
         }
+        async function loadUsers() {
+    const r = await fetch('/api/users?token=' + currentToken);
+    const users = await r.json();
+    if (users.detail) {
+        document.getElementById('users_result').innerHTML =
+            '<div class="alert alert-danger">' + users.detail + '</div>';
+        return;
+    }
+    let html = '<table class="table table-sm"><tr><th>ID</th><th>Логин</th><th>Роль</th><th>TOTP</th><th>Заблок.</th></tr>';
+    users.forEach(u => html += `<tr>
+        <td>${u.id}</td><td>${u.username}</td><td>${u.role}</td>
+        <td>${u.totp_enabled ? 'Да' : 'Нет'}</td><td>${u.is_blocked ? 'Да' : 'Нет'}</td>
+    </tr>`);
+    html += '</table>';
+    document.getElementById('users_result').innerHTML = html;
+}
+    async function loadDashboard() {
+    const r = await fetch('/api/dashboard?token=' + currentToken);
+    const d = await r.json();
+    if (!d.detail) {
+        document.getElementById('dash_users').textContent = d.total_users;
+        document.getElementById('dash_active').textContent = d.active_privileges;
+        document.getElementById('dash_today').textContent = d.today_events;
+        document.getElementById('dash_blocked').textContent = d.blocked_commands;
+    }
+}
+async function revokePrivilege() {
+    if (!confirm('Вы уверены, что хотите досрочно завершить использование привилегий?')) return;
+    const r = await fetch('/api/revoke_privilege?' + new URLSearchParams({token: currentToken}), {method: 'POST'});
+    const d = await r.json();
+    document.getElementById('priv_result').innerHTML =
+        '<div class="alert alert-info">' + (d.message || d.detail) + '</div>';
+    loadDashboard();
+}
     </script>
 </body>
 </html>
