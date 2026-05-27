@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>PAM System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1 class="mb-4">название потом придумаю</h1>
+
+        <ul class="nav nav-tabs" id="mainTabs">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#auth">Аутентификация</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#privileges">Привилегии</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#audit">Аудит</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#totp">Настройка TOTP</a></li>
+        </ul>
+
+        <div class="tab-content mt-3">
+            <!-- Вкладка аутентификации -->
+            <div class="tab-pane fade show active" id="auth">
+                <div class="card"><div class="card-body">
+                    <h5>Регистрация</h5>
+                    <input id="reg_user" class="form-control mb-2" placeholder="Логин">
+                    <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Пароль">
+                    <button class="btn btn-primary" onclick="register()">Зарегистрироваться</button>
+
+                    <hr>
+
+                    <h5>Вход</h5>
+                    <input id="login_user" class="form-control mb-2" placeholder="Логин">
+                    <input id="login_pass" type="password" class="form-control mb-2" placeholder="Пароль">
+                    <input id="totp_code" class="form-control mb-2" placeholder="TOTP-код (если настроен)">
+                    <button class="btn btn-success" onclick="login()">Войти</button>
+                    <div id="login_result" class="mt-2"></div>
+                </div></div>
+            </div>
+
+            <!-- Вкладка привилегий -->
+            <div class="tab-pane fade" id="privileges">
+                <div class="card"><div class="card-body">
+                    <h5>Запрос временных привилегий</h5>
+                    <input id="token" class="form-control mb-2" placeholder="Токен сессии">
+                    <input id="target" class="form-control mb-2" placeholder="Целевая система">
+                    <select id="role_select" class="form-control mb-2">
+                        <option value="admin">Администратор</option>
+                        <option value="db_admin">Администратор БД</option>
+                    </select>
+                    <textarea id="justification" class="form-control mb-2" placeholder="Обоснование"></textarea>
+                    <input id="duration" type="number" class="form-control mb-2" placeholder="Длительность (мин)" value="30">
+                    <button class="btn btn-warning" onclick="requestPrivilege()">Запросить</button>
+                    <div id="priv_result" class="mt-2"></div>
+                </div></div>
+            </div>
+
+            <!-- Вкладка аудита -->
+            <div class="tab-pane fade" id="audit">
+                <div class="card"><div class="card-body">
+                    <h5>Журнал событий</h5>
+                    <button class="btn btn-info mb-2" onclick="loadAudit()">Обновить</button>
+                    <div id="audit_result"></div>
+                </div></div>
+            </div>
+                  <!-- Вкладка настройки TOTP -->
+            <div class="tab-pane fade" id="totp">
+                <div class="card"><div class="card-body">
+                    <h5>Настройка двухфакторной аутентификации</h5>
+                    <input id="totp_username" class="form-control mb-2" placeholder="Логин">
+                    <button class="btn btn-primary" onclick="setupTOTP()">Сгенерировать секрет</button>
+                    <div id="totp_result" class="mt-2"></div>
+                </div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        async function register() {
+            const u = document.getElementById('reg_user').value;
+            const p = document.getElementById('reg_pass').value;
+            const r = await fetch('/api/register?' + new URLSearchParams({username: u, password: p}), {method: 'POST'});
+            alert((await r.json()).message || 'Ошибка');
+        }
+
+        async function login() {
+            const u = document.getElementById('login_user').value;
+            const p = document.getElementById('login_pass').value;
+            const t = document.getElementById('totp_code').value;
+            const params = new URLSearchParams({username: u, password: p});
+            if (t) params.append('totp_code', t);
+            const r = await fetch('/api/login?' + params, {method: 'POST'});
+            const d = await r.json();
+            if (d.token) {
+                document.getElementById('token').value = d.token;
+                document.getElementById('login_result').innerHTML = '<div class="alert alert-success">Вход выполнен. Токен: ' + d.token + '</div>';
+            } else {
+                document.getElementById('login_result').innerHTML = '<div class="alert alert-danger">Ошибка входа</div>';
+            }
+        }
+
+        async function requestPrivilege() {
+            const params = new URLSearchParams({
+                token: document.getElementById('token').value,
+                target_system: document.getElementById('target').value,
+                requested_role: document.getElementById('role_select').value,
+                justification: document.getElementById('justification').value,
+                duration_minutes: document.getElementById('duration').value
+            });
+            const r = await fetch('/api/request_privilege?' + params, {method: 'POST'});
+            const d = await r.json();
+            document.getElementById('priv_result').innerHTML = '<div class="alert alert-info">' + (d.message || d.detail) + '</div>';
+        }
+
+        async function loadAudit() {
+            const t = document.getElementById('token').value;
+            const r = await fetch('/api/audit_log?token=' + t);
+            const logs = await r.json();
+            let html = '<table class="table table-sm"><tr><th>Тип</th><th>Описание</th><th>Время</th></tr>';
+            logs.forEach(l => html += `<tr><td>${l.event_type}</td><td>${l.description}</td><td>${l.timestamp}</td></tr>`);
+            html += '</table>';
+            document.getElementById('audit_result').innerHTML = html;
+        }
+               async function setupTOTP() {
+    const u = document.getElementById('totp_username').value;
+    if (!u) {
+        alert('Введите логин');
+        return;
+    }
+    const r = await fetch('/api/setup_totp?' + new URLSearchParams({username: u}), {method: 'POST'});
+    const d = await r.json();
+    if (d.secret) {
+        document.getElementById('totp_result').innerHTML =
+            '<div class="alert alert-success">' +
+            '<p><b>Секретный ключ:</b> ' + d.secret + '</p>' +
+            '<p><b>URI:</b> ' + d.uri + '</p>' +
+            '<div id="qrcode"></div>' +
+            '<p>Отсканируйте QR-код в приложении-аутентификаторе.</p>' +
+            '</div>';
+        // Генерируем QR-код
+        new QRCode(document.getElementById("qrcode"), {
+            text: d.uri,
+            width: 200,
+            height: 200
+        });
+    } else {
+        document.getElementById('totp_result').innerHTML =
+            '<div class="alert alert-danger">' + (d.detail || 'Ошибка') + '</div>';
+    }
+}
+
+    </script>
+</body>
+</html>
