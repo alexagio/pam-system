@@ -12,7 +12,7 @@
 </head>
 <body class="bg-light">
     <div class="container mt-5" style="max-width: 600px;">
-        <h2 class="text-center mb-4">PrivGuard</h2>
+        <h2 class="text-center mb-4">"ЩИТ"</h2>
         <p class="text-center text-muted mb-4">Подсистема защиты привилегированного доступа</p>
 
         <!-- Шаг 1: Экран входа -->
@@ -152,22 +152,36 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Автовход при обновлении страницы
 window.addEventListener('load', function() {
     const savedToken = localStorage.getItem('pam_token');
     if (savedToken) {
-        currentToken = savedToken;
-        document.getElementById('menu_token').textContent = savedToken;
-        document.getElementById('menu_username').textContent = localStorage.getItem('pam_username');
-        document.getElementById('menu_role').textContent = localStorage.getItem('pam_role') || 'user';
-
-        if (localStorage.getItem('pam_role') === 'security_admin') {
-            document.getElementById('admin_policies').style.display = 'block';
-            document.getElementById('admin_users').style.display = 'block';
-        }
-        document.getElementById('dashboard').style.display = 'block';
-        showStep('step-menu');
-        loadDashboard();
+        // Проверяем, жив ли токен на сервере
+        fetch('/api/dashboard?token=' + savedToken)
+        .then(r => r.json())
+        .then(d => {
+            if (d.detail) {
+                // Токен умер — чистим localStorage и показываем вход
+                localStorage.clear();
+                showStep('step-login');
+            } else {
+                // Токен жив — автовход
+                currentToken = savedToken;
+                document.getElementById('menu_token').textContent = savedToken;
+                document.getElementById('menu_username').textContent = localStorage.getItem('pam_username');
+                document.getElementById('menu_role').textContent = localStorage.getItem('pam_role') || 'user';
+                if (localStorage.getItem('pam_role') === 'security_admin') {
+                    document.getElementById('admin_policies').style.display = 'block';
+                    document.getElementById('admin_users').style.display = 'block';
+                }
+                document.getElementById('dashboard').style.display = 'block';
+                showStep('step-menu');
+                loadDashboard();
+            }
+        })
+        .catch(() => {
+            // Сервер недоступен — показываем вход
+            showStep('step-login');
+        });
     }
 });
         let currentToken = '';
