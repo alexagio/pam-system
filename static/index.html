@@ -13,6 +13,7 @@
 <body class="bg-light">
     <div class="container mt-5" style="max-width: 600px;">
         <h2 class="text-center mb-4">"ЩИТ"</h2>
+        <h2 class="text-center mb-4">"ЩИТ"</h2>
         <p class="text-center text-muted mb-4">Подсистема защиты привилегированного доступа</p>
 
         <!-- Шаг 1: Экран входа -->
@@ -35,7 +36,7 @@
 <div id="step-register" class="step">
     <div class="card"><div class="card-body">
         <h4 class="card-title">Регистрация</h4>
-        <input id="reg_user" class="form-control mb-2" placeholder="Придумайте логин (от 3 символов)">
+        <input id="reg_user" class="form-control mb-2" placeholder="Придумайте логин">
         <input id="reg_pass" type="password" class="form-control mb-2" placeholder="Придумайте пароль">
         <small class="text-muted">Не менее 8 символов, заглавная и строчная буква, цифра</small>
         <button class="btn btn-primary w-100 mt-2 mb-2" onclick="register()">Зарегистрироваться</button>
@@ -268,17 +269,33 @@ window.addEventListener('load', function() {
         }
 
         function logout() {
-            if (window.dashboardInterval) clearInterval(window.dashboardInterval);
-            currentToken = '';
-            document.getElementById('login_user').value = '';
-            document.getElementById('login_pass').value = '';
-            document.getElementById('totp_code').value = '';
-            document.getElementById('totp_block').style.display = 'none';
-            showStep('step-login');
-                localStorage.removeItem('pam_token');
+    // Останавливаем автообновление дашборда
+    if (window.dashboardInterval) {
+        clearInterval(window.dashboardInterval);
+        window.dashboardInterval = null;
+    }
+
+    // Очищаем токен
+    currentToken = '';
+
+    // Очищаем localStorage
+    localStorage.removeItem('pam_token');
     localStorage.removeItem('pam_username');
     localStorage.removeItem('pam_role');
-        }
+
+    // Очищаем поля
+    document.getElementById('login_user').value = '';
+    document.getElementById('login_pass').value = '';
+    document.getElementById('totp_code').value = '';
+
+    // Скрываем дашборд и админские блоки
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('admin_policies').style.display = 'none';
+    document.getElementById('admin_users').style.display = 'none';
+
+    // Показываем экран входа
+    showStep('step-login');
+}
 
         async function requestPrivilege() {
             const params = new URLSearchParams({
