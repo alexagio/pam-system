@@ -9,6 +9,8 @@ import bcrypt
 import pyotp
 import uuid
 import os
+import aiosmtplib
+from email.message import EmailMessage
 
 from app.database import engine, SessionLocal, Base
 from app.models import User, PrivilegeRequest, ActivePrivilege, Policy, AuditLog
@@ -28,6 +30,8 @@ sessions = {}
 
 scheduler = BackgroundScheduler()
 scheduler.start()
+
+
 
 FORBIDDEN_PATTERNS = [
     "rm -rf /",
@@ -124,6 +128,22 @@ async def login(
 
     if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
         raise HTTPException(status_code=401, detail="Неверный логин или пароль")
+
+    # Проверка контекстных аномалий
+    import socket
+    client_ip = "127.0.0.1"  # в реальности — из request.client.host
+    current_hour = datetime.now().hour
+
+    if current_hour < 8 or current_hour > 20:
+        log = AuditLog(
+            user_id=user.id,
+            event_type="context_anomaly",
+            description=f"Вход в нерабочее время: {current_hour}:00, IP: {client_ip}",
+            ip_address=client_ip,
+            timestamp=datetime.now().isoformat()
+        )
+        db.add(log)
+        db.commit()
 
     if user.totp_enabled:
         if not totp_code:
