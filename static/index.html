@@ -64,33 +64,36 @@
         <p>Вы вошли как: <b id="menu_username"></b> (<span id="menu_role"></span>)</p>
         <p>Токен: <code id="menu_token"></code></p>
             <!-- Дашборд -->
-    <div class="row mb-3" id="dashboard" style="display:none;">
-        <div class="col-6 mb-2">
-            <div class="card bg-primary text-white"><div class="card-body text-center">
+   <div id="dashboard" style="display:none;">
+    <div class="row mb-3">
+        <div class="col-6">
+            <div class="card bg-primary text-white mb-3"><div class="card-body text-center">
                 <h3 id="dash_users">0</h3>
                 <small>Пользователей</small>
             </div></div>
         </div>
-        <div class="col-6 mb-2">
-            <div class="card bg-warning text-white"><div class="card-body text-center">
+        <div class="col-6">
+            <div class="card bg-warning text-white mb-3"><div class="card-body text-center">
                 <h3 id="dash_active">0</h3>
                 <small>Активных привилегий</small>
             </div></div>
         </div>
-        <div class="col-6 mb-2">
-            <div class="card bg-success text-white"><div class="card-body text-center">
+    </div>
+    <div class="row mb-3">
+        <div class="col-6">
+            <div class="card bg-success text-white mb-3"><div class="card-body text-center">
                 <h3 id="dash_today">0</h3>
                 <small>Событий сегодня</small>
             </div></div>
         </div>
-        <div class="col-6 mb-2">
-            <div class="card bg-danger text-white"><div class="card-body text-center">
+        <div class="col-6">
+            <div class="card bg-danger text-white mb-3"><div class="card-body text-center">
                 <h3 id="dash_blocked">0</h3>
-                <small>Заблокировано команд</small>
+                <small>Предотвращено угроз</small>
             </div></div>
         </div>
     </div>
-    </div></div>
+</div>
 
     <!-- Привилегии (доступно всем) -->
     <div class="card mb-3"><div class="card-body">
