@@ -9,6 +9,8 @@ import bcrypt
 import pyotp
 import uuid
 import os
+import subprocess
+
 import aiosmtplib
 from email.message import EmailMessage
 
@@ -31,7 +33,12 @@ sessions = {}
 scheduler = BackgroundScheduler()
 scheduler.start()
 
-
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 FORBIDDEN_PATTERNS = [
     "rm -rf /",
@@ -43,23 +50,63 @@ FORBIDDEN_PATTERNS = [
 ]
 
 
-@app.post("/api/check_command")
-async def check_command(token: str, command: str):
+@app.post("/api/execute_command")
+async def execute_command(token: str, command: str, db: Session = Depends(get_db)):
     if token not in sessions:
         raise HTTPException(status_code=401, detail="Не авторизован")
 
+    session_data = sessions[token]
+    user_id = session_data["user_id"]
+
+    # Проверка активных привилегий
+    active = db.query(ActivePrivilege).filter(
+        ActivePrivilege.user_id == user_id,
+        ActivePrivilege.is_active == True
+    ).first()
+
+    if not active:
+        raise HTTPException(status_code=403, detail="Недостаточно прав. Запросите повышение привилегий.")
+
+    # Сигнатурный анализ
     for pattern in FORBIDDEN_PATTERNS:
         if pattern.lower() in command.lower():
-            return {"allowed": False, "reason": f"Команда содержит запрещённый шаблон: {pattern}"}
+            log = AuditLog(
+                user_id=user_id,
+                event_type="command_blocked",
+                description=f"Заблокирована опасная команда: {command}",
+                ip_address="127.0.0.1",
+                timestamp=datetime.now().isoformat()
+            )
+            db.add(log)
+            db.commit()
+            return {"status": "blocked", "reason": f"Обнаружен запрещённый шаблон: {pattern}"}
 
-    return {"allowed": True}
+    # Запись в аудит
+    log = AuditLog(
+        user_id=user_id,
+        event_type="command_executed",
+        description=f"Выполнена команда: {command}",
+        ip_address="127.0.0.1",
+        timestamp=datetime.now().isoformat()
+    )
+    db.add(log)
+    db.commit()
 
-def get_db():
-    db = SessionLocal()
+    # Реальное выполнение команды
     try:
-        yield db
-    finally:
-        db.close()
+        result = subprocess.run(
+            command, shell=True, capture_output=True, text=True, timeout=10
+        )
+        output = result.stdout
+        error = result.stderr
+        if result.returncode != 0:
+            output = error if error else f"Ошибка (код {result.returncode})"
+    except subprocess.TimeoutExpired:
+        output = "Ошибка: превышено время выполнения"
+    except Exception as e:
+        output = f"Ошибка: {str(e)}"
+
+    return {"status": "executed", "command": command, "output": output}
 
 
 @app.get("/", response_class=HTMLResponse)

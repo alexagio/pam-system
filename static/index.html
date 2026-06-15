@@ -312,20 +312,23 @@ window.addEventListener('load', function() {
             const d = await r.json();
             document.getElementById('priv_result').innerHTML = '<div class="alert alert-info">' + (d.message || d.detail) + '</div>';
         }
-
-        async function executeCommand() {
-            const cmd = document.getElementById('command_input').value;
-            if (!cmd) { alert('Введите команду'); return; }
-            const r = await fetch('/api/execute_command?' + new URLSearchParams({token: currentToken, command: cmd}), {method: 'POST'});
-            const d = await r.json();
-            if (d.status === 'executed') {
-                document.getElementById('command_result').innerHTML = '<div class="alert alert-success">' + d.message + '</div>';
-            } else if (d.status === 'blocked') {
-                document.getElementById('command_result').innerHTML = '<div class="alert alert-danger">' + d.reason + '</div>';
-            } else {
-                document.getElementById('command_result').innerHTML = '<div class="alert alert-warning">' + (d.detail || 'Ошибка') + '</div>';
-            }
-        }
+async function executeCommand() {
+    const cmd = document.getElementById('command_input').value;
+    if (!cmd) { alert('Введите команду'); return; }
+    const r = await fetch('/api/execute_command?' + new URLSearchParams({token: currentToken, command: cmd}), {method: 'POST'});
+    const d = await r.json();
+    if (d.status === 'executed') {
+        document.getElementById('command_result').innerHTML =
+            '<div class="alert alert-success">' +
+            '<b>Команда:</b> ' + d.command + '<br>' +
+            '<b>Результат:</b><pre>' + (d.output || '(пусто)') + '</pre>' +
+            '</div>';
+    } else if (d.status === 'blocked') {
+        document.getElementById('command_result').innerHTML = '<div class="alert alert-danger">' + d.reason + '</div>';
+    } else {
+        document.getElementById('command_result').innerHTML = '<div class="alert alert-warning">' + (d.detail || 'Ошибка') + '</div>';
+    }
+}
 
         async function loadAudit() {
             const r = await fetch('/api/audit_log?token=' + currentToken);
